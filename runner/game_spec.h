@@ -153,8 +153,9 @@ typedef struct GameSpec {
      * for GM_Level), so a load continues moment-in-time instead of
      * re-running the mode handler's init (zone reload). Return 0 to
      * fall back to resume_main_loop_pc (mode-handler re-entry via the
-     * outer dispatcher) — correct for transition/init modes. Addresses
-     * come from the game's disassembly. */
+     * outer dispatcher) — correct for transition/init modes. Return
+     * GAME_RESUME_PC_UNSUPPORTED to reject a state whose restored mode
+     * cannot be resumed safely. Addresses come from the game's disassembly. */
     uint32_t  (*save_resume_pc)(uint8_t game_mode);
 
     /* Outer game-mode dispatcher PC. If the save-state resume loop
@@ -269,6 +270,25 @@ typedef struct GameSpec {
      * one function at a time during divergence hunting. NULL+0 is
      * legal and means "no overrides". */
 } GameSpec;
+
+#define GAME_RESUME_PC_UNSUPPORTED UINT32_MAX
+
+static inline bool game_spec_resolve_save_resume_pc(
+    const GameSpec *spec, bool has_game_mode, uint8_t game_mode,
+    uint32_t *resume_pc)
+{
+    uint32_t pc = spec->resume_main_loop_pc;
+    if (spec->save_resume_pc && has_game_mode) {
+        uint32_t mapped = spec->save_resume_pc(game_mode);
+        if (mapped == GAME_RESUME_PC_UNSUPPORTED)
+            return false;
+        if (mapped)
+            pc = mapped;
+    }
+    if (resume_pc)
+        *resume_pc = pc;
+    return true;
+}
 
 /*
  * The single per-game spec instance. Each game project defines this

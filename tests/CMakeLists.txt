@@ -92,6 +92,18 @@ add_test(NAME input_script_party COMMAND input_script_party_test
     "${CMAKE_CURRENT_LIST_DIR}/runtime/input_script_invalid_a7.input"
     "${CMAKE_CURRENT_LIST_DIR}/runtime/input_script_invalid_restart.input")
 
+add_executable(game_resume_policy_test runtime/game_resume_policy_test.c)
+target_include_directories(game_resume_policy_test PRIVATE
+    "${CMAKE_CURRENT_LIST_DIR}/../runner")
+add_test(NAME game_resume_policy COMMAND game_resume_policy_test)
+
+add_executable(host_state_resume_policy_test
+    runtime/host_state_resume_policy_test.c)
+target_include_directories(host_state_resume_policy_test PRIVATE
+    "${CMAKE_CURRENT_LIST_DIR}/../runner")
+add_test(NAME host_state_resume_policy COMMAND host_state_resume_policy_test
+    "${CMAKE_CURRENT_BINARY_DIR}/host-state-unsupported.bin")
+
 add_executable(sonic1_video_test runtime/sonic1_video_test.c
     "${CMAKE_CURRENT_LIST_DIR}/../sonicthehedgehog/sonic1_video.c")
 target_include_directories(sonic1_video_test PRIVATE
