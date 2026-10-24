@@ -158,10 +158,22 @@ typedef struct GameSpec {
      * cannot be resumed safely. Addresses come from the game's disassembly. */
     uint32_t  (*save_resume_pc)(uint8_t game_mode);
 
-    /* Outer game-mode dispatcher PC. If the save-state resume loop
-     * returns because the game changed modes, the restarted host fiber
-     * continues here so normal mode dispatch takes over. */
+    /* Optional callable setup that runs once after the save-state resume loop
+     * returns and before dispatch_main_loop_pc. Use this when the original
+     * continuation is the interior suffix "JSR setup; JMP main_loop".
+     * Ignored when dispatch_main_loop_pc is 0. */
+    uint32_t    resume_dispatch_setup_pc;
+
+    /* Callable game-mode dispatcher or main-loop PC. If the save-state resume
+     * loop returns because the game changed modes, the restarted host fiber
+     * continues here so normal dispatch takes over. */
     uint32_t    dispatch_main_loop_pc;
+
+    /* Optional stable dispatcher called repeatedly after
+     * dispatch_main_loop_pc returns. This supports games whose first
+     * post-resume continuation is an interior path that must run once before
+     * normal outer dispatch resumes. Ignored when dispatch_main_loop_pc is 0. */
+    uint32_t    redispatch_main_loop_pc;
 
     /* Optional per-yield periodic. Sonic 1 calls a UpdateMusic-like
      * routine (func_001642) while the game thread is parked at

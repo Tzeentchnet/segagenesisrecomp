@@ -104,6 +104,11 @@ target_include_directories(host_state_resume_policy_test PRIVATE
 add_test(NAME host_state_resume_policy COMMAND host_state_resume_policy_test
     "${CMAKE_CURRENT_BINARY_DIR}/host-state-unsupported.bin")
 
+add_executable(resume_dispatch_test runtime/resume_dispatch_test.c)
+target_include_directories(resume_dispatch_test PRIVATE
+    "${CMAKE_CURRENT_LIST_DIR}/../runner")
+add_test(NAME resume_dispatch COMMAND resume_dispatch_test)
+
 add_executable(sonic1_video_test runtime/sonic1_video_test.c
     "${CMAKE_CURRENT_LIST_DIR}/../sonicthehedgehog/sonic1_video.c")
 target_include_directories(sonic1_video_test PRIVATE

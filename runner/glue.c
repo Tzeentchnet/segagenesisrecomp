@@ -41,6 +41,7 @@
 #include "frame_record.h"
 #include "game_layout.h"
 #include "game_spec.h"
+#include "resume_dispatch.h"
 #include "runtime_evidence.h"
 
 int genesis_game_instruction_hook(uint32_t pc)
@@ -594,22 +595,67 @@ static void game_fiber_func(void *param)
                         (int)st, g_m68ki_bad_pc, g_m68ki_bad_op);
                 for (;;) yield_to_main(GLUE_YIELD_HALT);
             }
-            if (g_game_spec.dispatch_main_loop_pc) {
-                uint32_t dispatch_pc = g_game_spec.dispatch_main_loop_pc & 0xFFFFFFu;
-                fprintf(stderr, "[GAME] %s resume loop returned at $%06X with saved A7 $%06X; continuing at dispatcher $%06X\n",
-                        g_game_spec.short_name, resume_pc, resume_a7, dispatch_pc);
-                interp_drive_mainloop(dispatch_pc);
+            GenesisResumeDispatch dispatch;
+            genesis_resume_dispatch_init(&dispatch, &g_game_spec);
+            if (dispatch.dispatch_pc) {
+                if (dispatch.setup_pc) {
+                    fprintf(stderr, "[GAME] %s resume loop returned at $%06X with saved A7 $%06X; continuing via setup $%06X and dispatcher $%06X\n",
+                            g_game_spec.short_name, resume_pc, resume_a7,
+                            dispatch.setup_pc, dispatch.dispatch_pc);
+                    uint32_t setup_pc = 0;
+                    GenesisResumeDispatchStage stage;
+                    genesis_resume_dispatch_next(&dispatch, &setup_pc, &stage);
+                    st = m68k_interp_run_framed(setup_pc, &exit_pc);
+                    if (st != M68KI_OK) {
+                        fprintf(stderr, "[FORCE_INTERP] dispatch setup HALT st=%d at PC=$%06X op=$%04X\n",
+                                (int)st, g_m68ki_bad_pc, g_m68ki_bad_op);
+                        for (;;) yield_to_main(GLUE_YIELD_HALT);
+                    }
+                } else {
+                    fprintf(stderr, "[GAME] %s resume loop returned at $%06X with saved A7 $%06X; continuing at dispatcher $%06X\n",
+                            g_game_spec.short_name, resume_pc, resume_a7,
+                            dispatch.dispatch_pc);
+                }
+                if (!dispatch.redispatch_pc)
+                    interp_drive_mainloop(dispatch.dispatch_pc);
+
+                uint32_t dispatch_pc = 0;
+                GenesisResumeDispatchStage stage;
+                while (genesis_resume_dispatch_next(
+                        &dispatch, &dispatch_pc, &stage)) {
+                    st = m68k_interp_run_framed(dispatch_pc, &exit_pc);
+                    if (st != M68KI_OK) {
+                        const char *phase =
+                            stage == GENESIS_RESUME_DISPATCH_INITIAL
+                            ? "dispatch" : "redispatch";
+                        fprintf(stderr, "[FORCE_INTERP] %s HALT st=%d at PC=$%06X op=$%04X\n",
+                                phase, (int)st, g_m68ki_bad_pc, g_m68ki_bad_op);
+                        for (;;) yield_to_main(GLUE_YIELD_HALT);
+                    }
+                }
             }
             fprintf(stderr, "[GAME] %s interpreted resume returned to $%06X unexpectedly!\n",
                     g_game_spec.short_name, exit_pc);
             for (;;) yield_to_main(GLUE_YIELD_HALT);
         }
         recomp_call_addr(resume_pc);
-        if (g_game_spec.dispatch_main_loop_pc) {
-            uint32_t dispatch_pc = g_game_spec.dispatch_main_loop_pc & 0xFFFFFFu;
-            fprintf(stderr, "[GAME] %s resume loop returned at $%06X with saved A7 $%06X; continuing at dispatcher $%06X\n",
-                    g_game_spec.short_name, resume_pc, resume_a7, dispatch_pc);
-            recomp_call_addr(dispatch_pc);
+        GenesisResumeDispatch dispatch;
+        genesis_resume_dispatch_init(&dispatch, &g_game_spec);
+        if (dispatch.dispatch_pc) {
+            if (dispatch.setup_pc) {
+                fprintf(stderr, "[GAME] %s resume loop returned at $%06X with saved A7 $%06X; continuing via setup $%06X and dispatcher $%06X\n",
+                        g_game_spec.short_name, resume_pc, resume_a7,
+                        dispatch.setup_pc, dispatch.dispatch_pc);
+            } else {
+                fprintf(stderr, "[GAME] %s resume loop returned at $%06X with saved A7 $%06X; continuing at dispatcher $%06X\n",
+                        g_game_spec.short_name, resume_pc, resume_a7,
+                        dispatch.dispatch_pc);
+            }
+            uint32_t dispatch_pc = 0;
+            GenesisResumeDispatchStage stage;
+            while (genesis_resume_dispatch_next(
+                    &dispatch, &dispatch_pc, &stage))
+                recomp_call_addr(dispatch_pc);
         }
         fprintf(stderr, "[GAME] %s resume/dispatch returned unexpectedly!\n",
                 g_game_spec.short_name);
