@@ -53,9 +53,8 @@ static int publish(GenesisHostStream *s, int flush)
 }
 static void drain_at_exit(void)
 {
-    while (s_streams)
-        if (!genesis_host_stream_destroy(s_streams))
-            fprintf(stderr, "[host-stream] file write failed at exit\n");
+    if (!genesis_host_stream_shutdown())
+        fprintf(stderr, "[host-stream] file write failed at exit\n");
 }
 GenesisHostStream *genesis_host_stream_create(FILE *file, size_t capacity)
 {
@@ -141,6 +140,13 @@ int genesis_host_stream_flush_all(void)
     int ok=1;
     for(GenesisHostStream *s=s_streams;s;s=s->next)
         if(!genesis_host_stream_flush(s))ok=0;
+    return ok;
+}
+int genesis_host_stream_shutdown(void)
+{
+    int ok=1;
+    while(s_streams)
+        if(!genesis_host_stream_destroy(s_streams))ok=0;
     return ok;
 }
 int genesis_host_stream_destroy(GenesisHostStream *s)

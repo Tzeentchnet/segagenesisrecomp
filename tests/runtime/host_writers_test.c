@@ -388,8 +388,12 @@ int main(int argc, char **argv)
         unsigned char data[12345];
         for (size_t i = 0; i < sizeof data; ++i) data[i] = (unsigned char)(i * 31u);
         CHECK(genesis_host_stream_write(s, data, sizeof data));
-        if (argc > 3) SDL_Quit();
-        return 0; /* Production atexit must drain before CRT closes FILE. */
+        if (argc > 3) {
+            CHECK(genesis_host_stream_shutdown());
+            CHECK(!s_streams);
+            SDL_Quit();
+        }
+        return 0; /* Explicit shutdown or atexit must drain before CRT closes FILE. */
     }
     CHECK(argc == 2);
     stream_extension(argv[1]); stream_checks(); persist_checks(); real_file_checks(argv[1]);

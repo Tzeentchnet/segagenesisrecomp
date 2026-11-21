@@ -4137,7 +4137,7 @@ session_begin:;
                 runner_sram_complete(1);
                 (void)genesis_persist_destroy(s_sram_writer);s_sram_writer=NULL;
                 audio_wav_stop();
-                if(!genesis_host_stream_flush_all())fprintf(stderr,"[capture] final write failed\n");
+                if(!genesis_host_stream_shutdown())fprintf(stderr,"[capture] final write failed\n");
                 genesis_replay_shutdown();
                 report_z80_sync();
                 return input_script_exit_code();
@@ -4631,7 +4631,7 @@ session_begin:;
     if (s_framelog_file) fclose(s_framelog_file);
     { extern int audio_wav_active(void); extern void audio_wav_stop(void);
       if (audio_wav_active()) audio_wav_stop(); }
-    if(!genesis_host_stream_flush_all())fprintf(stderr,"[capture] final write failed\n");
+    if(!genesis_host_stream_shutdown())fprintf(stderr,"[capture] final write failed\n");
     genesis_local_states_shutdown();
     if(!window_pump_shutdown()) {
         fprintf(stderr,"[window] cannot finish active move/resize loop at shutdown\n");

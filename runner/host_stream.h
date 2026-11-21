@@ -24,6 +24,9 @@ int genesis_host_stream_flush_async(GenesisHostStream *);
 /* Producer-side capture completion boundary, including function-static sinks.
  * Does not close borrowed FILEs or unregister still-active captures. */
 int genesis_host_stream_flush_all(void);
+/* Drain and destroy every stream while SDL worker primitives are still valid.
+ * The atexit fallback remains for callers that do not shut SDL down explicitly. */
+int genesis_host_stream_shutdown(void);
 /* Flush/destroy acknowledge actual completion/errors, not just acceptance.
  * Destroy drains but does not close the caller's FILE. */
 int genesis_host_stream_flush(GenesisHostStream *);
